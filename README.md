@@ -1,6 +1,6 @@
 # Suyziss Termux Toolkit
 
-**Version: 1.2.28**  
+**Version: 1.2.29**  
 A dependency-free command-line toolkit for Termux on Android (including ARM64) and ordinary Linux. Requires Python 3.9+; no third-party Python packages and no root access.
 
 ## Features
@@ -13,91 +13,93 @@ A dependency-free command-line toolkit for Termux on Android (including ARM64) a
 - **Process viewer** — read-only process listing; does not stop processes.
 - **System report** — exports a JSON report with device and process information.
 - **Interactive menu** — launch the main tools from a numbered menu.
-- **Global command** — install a \`toolkit\` launcher so commands work from any directory.
+- **Global command** — install a `toolkit` launcher so commands work from any directory.
+- **Termux Translate** — translate terminal text between language codes using a remote translation API, with optional clipboard integration.
 
 ## Install
 
-In Termux, run each command separately:
+In Termux:
 
-\`\`\`bash
+```bash
 pkg update
 pkg install python git
 git clone https://github.com/suyziss/termux-toolkit.git
 cd termux-toolkit
-python termux_toolkit.py --help
-\`\`\`
+python3 translate.py --help
+```
 
-No \`pip install\` step is required.
+No `pip install` step is required.
 
-## Install the short command
+## Termux Translate
+
+Translate text directly from the shell:
+
+```bash
+python3 translate.py -t ru "Hello, how are you?"
+python3 translate.py -s ru -t en "Привет, как дела?"
+python3 translate.py -s en -t ky "Welcome to Termux"
+```
+
+Read from stdin:
+
+```bash
+echo "Good morning" | python3 translate.py -t ru
+```
+
+Translate the Termux clipboard and copy the result back:
+
+```bash
+python3 translate.py --clipboard -t ru --copy
+```
+
+For clipboard support, install Termux:API and the Termux API package:
+
+```bash
+pkg install termux-api
+```
+
+The translator is dependency-free, but it requires network access and uses the MyMemory translation API. Do not send passwords, API keys, private messages, or other sensitive data.
+
+## Install a short command
 
 From the project directory:
 
-\`\`\`bash
-python termux_toolkit.py install-command
-\`\`\`
+```bash
+mkdir -p "$PREFIX/bin"
+cp ttranslate "$PREFIX/bin/ttranslate"
+chmod +x "$PREFIX/bin/ttranslate"
+```
 
-After that, use \`toolkit\` from any directory:
+Then:
 
-\`\`\`bash
-toolkit version
-toolkit info
-toolkit menu
-\`\`\`
+```bash
+ttranslate -t ru "Hello from Termux"
+```
 
-The installer refuses to overwrite an unrelated existing \`toolkit\` command. To remove only the launcher later:
+## Existing toolkit commands
 
-\`\`\`bash
-toolkit uninstall-command
-\`\`\`
-
-Your project files are not deleted by the uninstaller.
-
-## Commands
-
-\`\`\`bash
-toolkit info
-toolkit network
-toolkit network github.com example.com
-toolkit clean
-toolkit clean .cache tmp
-toolkit clean .cache --apply
-toolkit packages installed
-toolkit packages upgradable
-toolkit processes
-toolkit processes --limit 60
-toolkit report
-toolkit report -o ~/storage/shared/termux-report.json
-toolkit backup ~/storage/shared/Documents -o ~/backups
-toolkit menu
-\`\`\`
-
-If you have not installed the global launcher, replace \`toolkit\` with \`python termux_toolkit.py\`.
+```bash
+python3 termux_toolkit.py info
+python3 termux_toolkit.py network
+python3 termux_toolkit.py clean
+python3 termux_toolkit.py packages upgradable
+python3 termux_toolkit.py processes
+python3 termux_toolkit.py report
+python3 termux_toolkit.py backup ~/storage/shared/Documents -o ~/backups
+python3 termux_toolkit.py menu
+```
 
 ## Safety
 
-- The cleaner is **dry-run by default**. Review the listed paths before using \`--apply\`. It refuses the home directory itself, paths outside the home directory, and symbolic-link targets.
-- The process viewer is read-only. It does not kill or modify processes.
-- The package command only displays package information. It does not install, remove, or upgrade packages.
-- Backups are ordinary ZIP files, not encrypted. Do not share archives containing passwords, tokens, private keys, or other secrets.
-- Network diagnostics make DNS lookups and HTTPS requests to the hostnames you specify.
-- The JSON report includes basic system details and a short process listing. Review it before sharing.
+- Translation sends the text you provide to the configured remote translation service.
+- The translator does not require root and does not modify system files.
+- Clipboard operations require Termux:API.
+- Existing toolkit cleanup and backup safety rules remain unchanged.
 
 ## Compatibility
 
-Designed for Termux on Android (including ARM64) and Linux with Python 3.9+. No root access is required. The \`packages\` command requires Termux's \`pkg\` utility. Some hardware details may be hidden by Android.
-
-## Project structure
-
-\`\`\`text
-termux-toolkit/
-├── termux_toolkit.py
-├── README.md
-├── CHANGELOG.md
-├── LICENSE
-└── .gitignore
-\`\`\`
+Designed for Termux on Android and Linux with Python 3.9+. No root access is required.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See LICENSE.
