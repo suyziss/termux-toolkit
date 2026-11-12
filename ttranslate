@@ -1,0 +1,4 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# Suyziss Termux Translate launcher
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+exec python3 "$SCRIPT_DIR/translate.py" "$@"
