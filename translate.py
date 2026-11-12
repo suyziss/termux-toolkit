@@ -64,6 +64,47 @@ def translate_text(text: str, source: str, target: str, timeout: int) -> str:
     return result
 
 
+def translate_long_text(text: str, source: str, target: str, timeout: int) -> str:
+    """Translate long input in safe-sized chunks instead of rejecting it."""
+    lines = text.splitlines()
+    translated_lines: list[str] = []
+    total_chunks = 0
+    prepared: list[list[str]] = []
+    for line in lines:
+        words = line.split()
+        if not words:
+            prepared.append([])
+            continue
+        chunks: list[str] = []
+        current = ""
+        for word in words:
+            if len(word.encode("utf-8")) > 450:
+                raise ValueError("Одно из слов или ссылок слишком длинное для перевода.")
+            candidate = f"{current} {word}".strip()
+            if len(candidate.encode("utf-8")) > 450 and current:
+                chunks.append(current)
+                current = word
+            else:
+                current = candidate
+        if current:
+            chunks.append(current)
+        prepared.append(chunks)
+        total_chunks += len(chunks)
+
+    completed = 0
+    for chunks in prepared:
+        if not chunks:
+            translated_lines.append("")
+            continue
+        translated_parts = []
+        for chunk in chunks:
+            completed += 1
+            if total_chunks > 1:
+                print(f"Перевод части {completed}/{total_chunks}...", file=sys.stderr)
+            translated_parts.append(translate_text(chunk, source, target, timeout))
+        translated_lines.append(" ".join(translated_parts))
+    return "\\n".join(translated_lines)
+
 def get_clipboard() -> str:
     import shutil
     import subprocess
@@ -133,7 +174,7 @@ def main() -> int:
         print(f"Определён исходный язык: {source}", file=sys.stderr)
 
     try:
-        result = translate_text(text, source, target, args.timeout)
+        result = translate_long_text(text, source, target, args.timeout)
         print(result)
         if args.copy:
             set_clipboard(result)
