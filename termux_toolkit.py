@@ -323,7 +323,7 @@ def install_command(_: argparse.Namespace) -> int:
     script = Path(__file__).resolve()
     python = Path(sys.executable).resolve()
     content = (
-        "#!/data/data/com.termux/files/usr/bin/sh\n"
+        "#!/usr/bin/env sh\n"
         "# Suyziss Termux Toolkit launcher\n"
         f"exec {shlex.quote(str(python))} {shlex.quote(str(script))} \"$@\"\n"
     )
@@ -331,7 +331,7 @@ def install_command(_: argparse.Namespace) -> int:
         bindir.mkdir(parents=True, exist_ok=True)
         if launcher.exists():
             existing = launcher.read_text(errors="replace")
-            if "Suyziss Termux Toolkit launcher" not in existing:
+            if "Suyziss Termux Toolkit launcher" not in existing and not ("termux_toolkit.py" in existing and "termux-toolkit" in existing):
                 print(f"Refusing to overwrite an unrelated command: {launcher}", file=sys.stderr)
                 return 2
         launcher.write_text(content, encoding="utf-8")
@@ -352,7 +352,7 @@ def uninstall_command(args: argparse.Namespace) -> int:
         return 0
     try:
         content = launcher.read_text(errors="replace")
-        if "Suyziss Termux Toolkit launcher" not in content:
+        if "Suyziss Termux Toolkit launcher" not in content and not ("termux_toolkit.py" in content and "termux-toolkit" in content):
             print("Refusing to remove a command that does not belong to this toolkit.")
             return 2
         if not args.yes and input("Remove the toolkit command? [y/N] ").strip().lower() != "y":
