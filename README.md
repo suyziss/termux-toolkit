@@ -42,6 +42,11 @@
 
     python tui_explorer.py
 
+Или через установленную команду Toolkit:
+
+    toolkit files
+    toolkit files ~/storage/shared
+
 Можно передать стартовую папку:
 
     python tui_explorer.py ~/storage/shared
@@ -101,6 +106,7 @@
 | toolkit report | Сохранить системный отчёт |
 | toolkit backup ПАПКА -o ПАПКА_КОПИЙ | Создать ZIP-копию |
 | toolkit trans | Открыть переводчик |
+| toolkit files | Открыть файловый менеджер TUI |
 
 ## Безопасность
 
