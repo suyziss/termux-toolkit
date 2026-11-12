@@ -19,7 +19,7 @@ import zipfile
 from pathlib import Path
 
 APP_NAME = "Suyziss Termux Toolkit"
-APP_VERSION = "1.2.30"
+APP_VERSION = "1.2.31"
 HOME = Path.home().resolve()
 IS_TERMUX = "com.termux" in os.environ.get("PREFIX", "") or shutil.which("pkg") is not None
 NO_COLOR = not sys.stdout.isatty() or "NO_COLOR" in os.environ
