@@ -64,7 +64,7 @@ def collect_system_info() -> dict:
             "used_bytes": usage.used,
             "free_bytes": usage.free,
         }
-    except OSОшибка:
+    except OSError:
         result["storage"] = None
     meminfo = Path("/proc/meminfo")
     if meminfo.is_file():
@@ -161,9 +161,9 @@ def directory_size(path: Path) -> int:
             try:
                 if item.is_file() and not item.is_symlink():
                     total += item.stat().st_size
-            except OSОшибка:
+            except OSError:
                 continue
-    except OSОшибка:
+    except OSError:
         pass
     return total
 
@@ -362,7 +362,7 @@ def install_command(_: argparse.Namespace) -> int:
         launcher.write_text(content, encoding="utf-8")
         launcher.chmod(0o755)
     except OSError as exc:
-        print(f"Could not install command: {exc}", file=sys.stderr)
+        print(f"Не удалось установить команду: {exc}", file=sys.stderr)
         return 1
     print(f"Установлено: {launcher}")
     print("Теперь можно выполнить: toolkit info")
@@ -385,7 +385,7 @@ def uninstall_command(args: argparse.Namespace) -> int:
             return 0
         launcher.unlink()
     except OSError as exc:
-        print(f"Could not uninstall toolkit command: {exc}", file=sys.stderr)
+        print(f"Не удалось удалить команду toolkit: {exc}", file=sys.stderr)
         return 1
     print("Команда toolkit удалена. Файлы проекта не изменены.")
     return 0
@@ -407,7 +407,7 @@ def interactive_menu(_: argparse.Namespace) -> int:
         heading(f"{APP_NAME} v{APP_VERSION}")
         for key, (label, _) in actions.items():
             print(f"  {key}. {label}")
-        print("  0. Exit")
+        print("  0. Выход")
         choice = input("\nВыбор: ").strip()
         if choice == "0":
             return 0
@@ -422,12 +422,7 @@ def interactive_menu(_: argparse.Namespace) -> int:
             output = input("Куда сохранить [текущая папка]: ").strip() or "."
             command = ["backup", source, "-o", output]
         elif command is None and label == "Перевести текст":
-            target = input("На какой язык [ru]: ").strip() or "ru"
-            source = input("С какого языка [auto]: ").strip() or "auto"
-            text = input("Введите текст: ").strip()
-            if not text:
-                continue
-            command = ["trans", "-s", source, "-t", target, text]
+            command = ["trans"]
         try:
             parsed = build_parser().parse_args(command)
             code = int(parsed.func(parsed))
@@ -462,7 +457,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--yes", action="store_true", help="Не спрашивать подтверждение (используйте осторожно)")
     p.set_defaults(func=clean_storage)
 
-    p = sub.add_parser("packages", help="List installed or upgradable Пакеты Termux")
+    p = sub.add_parser("packages", help="Показать установленные или доступные для обновления пакеты Termux")
     p.add_argument("action", choices=("installed", "upgradable"), nargs="?", default="upgradable")
     p.set_defaults(func=package_manager)
 
@@ -479,7 +474,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("-o", "--output", default=f"termux-toolkit-report-{dt.datetime.now():%Y%m%d-%H%M%S}.json")
     p.set_defaults(func=export_report)
 
-    p = sub.add_parser("trans", aliases=["translate"], help="Перевести текст through the Termux Translate tool")
+    p = sub.add_parser("trans", aliases=["translate"], help="Перевести текст")
     p.add_argument("text", nargs="*", help="Текст для перевода")
     p.add_argument("-s", "--source", default="auto", help="Код исходного языка")
     p.add_argument("-t", "--target", default="ru", help="Код языка перевода (по умолчанию ru)")
