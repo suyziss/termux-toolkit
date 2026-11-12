@@ -32,18 +32,18 @@ def human_size(size: int) -> str:
 
 def read_key() -> str:
     """Read one key, including common terminal arrow-key sequences."""
-    first = sys.stdin.read(1)
+    first = os.read(sys.stdin.fileno(), 1).decode("utf-8", errors="replace")
     if first != "\x1b":
         return first
     import select
     if not select.select([sys.stdin], [], [], 0.035)[0]:
         return "ESC"
-    second = sys.stdin.read(1)
+    second = os.read(sys.stdin.fileno(), 1).decode("utf-8", errors="replace")
     if second != "[":
         return "ESC"
     if not select.select([sys.stdin], [], [], 0.035)[0]:
         return "ESC"
-    third = sys.stdin.read(1)
+    third = os.read(sys.stdin.fileno(), 1).decode("utf-8", errors="replace")
     return {"A": "UP", "B": "DOWN", "C": "RIGHT", "D": "LEFT",
             "H": "HOME", "F": "END"}.get(third, "ESC")
 
