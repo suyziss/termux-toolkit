@@ -402,6 +402,7 @@ def interactive_menu(_: argparse.Namespace) -> int:
         "7": ("Установить команду toolkit", ["install-command"]),
         "8": ("Резервная копия папки", None),
         "9": ("Перевести текст", None),
+        "10": ("Файловый менеджер TUI", ["files"]),
     }
     while True:
         heading(f"{APP_NAME} v{APP_VERSION}")
@@ -431,6 +432,23 @@ def interactive_menu(_: argparse.Namespace) -> int:
         except (KeyboardInterrupt, EOFError):
             print("\nОтменено.")
         input("\nНажмите Enter, чтобы вернуться в меню...")
+
+
+
+def open_file_manager(args: argparse.Namespace) -> int:
+    explorer = Path(__file__).resolve().with_name("tui_explorer.py")
+    if not explorer.is_file():
+        print(f"Файловый менеджер не найден: {explorer}", file=sys.stderr)
+        return 1
+    command = [sys.executable, str(explorer)]
+    if args.path:
+        command.append(args.path)
+    try:
+        result = subprocess.run(command, check=False)
+    except OSError as exc:
+        print(f"Не удалось запустить файловый менеджер: {exc}", file=sys.stderr)
+        return 1
+    return result.returncode
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -489,6 +507,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("uninstall-command", help="Удалить только команду запуска Toolkit")
     p.add_argument("--yes", action="store_true")
     p.set_defaults(func=uninstall_command)
+
+    p = sub.add_parser("files", help="Открыть файловый менеджер TUI со стрелочной навигацией")
+    p.add_argument("path", nargs="?", default=None, help="Начальная папка")
+    p.set_defaults(func=open_file_manager)
 
     p = sub.add_parser("menu", help="Открыть главное меню")
     p.set_defaults(func=interactive_menu)
