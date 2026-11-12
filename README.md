@@ -1,105 +1,87 @@
 # Suyziss Termux Toolkit
 
-**Version: 1.2.29**  
-A dependency-free command-line toolkit for Termux on Android (including ARM64) and ordinary Linux. Requires Python 3.9+; no third-party Python packages and no root access.
+**Версия: 1.2.30**
 
-## Features
+Набор полезных инструментов для Termux на Android и Linux. Интерфейс на русском языке. Требуется Python 3.9+. Сторонние Python-библиотеки и root не нужны.
 
-- **System information** — OS, architecture, Python, storage and available RAM.
-- **Network diagnostics** — DNS resolution and HTTPS reachability.
-- **Storage cleaner** — calculates folder sizes; dry-run by default; refuses paths outside your home directory.
-- **Package status** — lists installed or upgradable Termux packages without changing them.
-- **ZIP backup** — archives a folder and skips common generated folders.
-- **Process viewer** — read-only process listing; does not stop processes.
-- **System report** — exports a JSON report with device and process information.
-- **Interactive menu** — launch the main tools from a numbered menu.
-- **Global command** — install a `toolkit` launcher so commands work from any directory.
-- **Termux Translate** — translate terminal text between language codes using a remote translation API, with optional clipboard integration.
+## Возможности
+- Информация об устройстве: система, архитектура, Python, свободное место и ОЗУ.
+- Проверка DNS и доступности сайтов по HTTPS.
+- Проверка размера папок и безопасная очистка (по умолчанию ничего не удаляется).
+- Просмотр установленных и доступных для обновления пакетов Termux.
+- Резервная копия папки в ZIP.
+- Просмотр запущенных процессов.
+- Экспорт системного отчёта в JSON.
+- Переводчик с вводом текста и поддержкой буфера обмена.
+- Главное меню на русском языке.
 
-## Install
+## Установка
 
-In Termux:
+В Termux:
 
-```bash
-pkg update
-pkg install python git
-git clone https://github.com/suyziss/termux-toolkit.git
-cd termux-toolkit
-python3 translate.py --help
-```
+    pkg update
+    pkg install python git
+    git clone https://github.com/suyziss/termux-toolkit.git
+    cd termux-toolkit
+    python termux_toolkit.py menu
 
-No `pip install` step is required.
+Чтобы запускать Toolkit командой toolkit из любой папки:
 
-## Termux Translate
+    python termux_toolkit.py install-command
 
-Translate text directly from the shell:
+После установки:
 
-```bash
-python3 translate.py -t ru "Hello, how are you?"
-python3 translate.py -s ru -t en "Привет, как дела?"
-python3 translate.py -s en -t ky "Welcome to Termux"
-```
+    toolkit
+    toolkit help
+    toolkit info
 
-Read from stdin:
+## Переводчик
 
-```bash
-echo "Good morning" | python3 translate.py -t ru
-```
+Открой главное меню и выбери «Перевести текст». Введи текст и укажи язык результата. По умолчанию используется русский.
 
-Translate the Termux clipboard and copy the result back:
+Примеры запуска:
 
-```bash
-python3 translate.py --clipboard -t ru --copy
-```
+    toolkit trans
+    toolkit trans -t en "Привет, как дела?"
+    toolkit trans -s en -t ru "Hello, how are you?"
 
-For clipboard support, install Termux:API and the Termux API package:
+Поддерживаются коды языков (ru, en, ky и другие) и некоторые названия на русском (английский, кыргызский). При source=auto язык определяется простой локальной эвристикой; для точного выбора укажи -s.
 
-```bash
-pkg install termux-api
-```
+Перевод текста из буфера с копированием результата:
 
-The translator is dependency-free, but it requires network access and uses the MyMemory translation API. Do not send passwords, API keys, private messages, or other sensitive data.
+    toolkit trans --clipboard -t ru --copy
 
-## Install a short command
+Для работы с буфером нужны Termux:API и пакет:
 
-From the project directory:
+    pkg install termux-api
 
-```bash
-mkdir -p "$PREFIX/bin"
-cp ttranslate "$PREFIX/bin/ttranslate"
-chmod +x "$PREFIX/bin/ttranslate"
-```
+Перевод выполняется через MyMemory Translation API и требует интернет. Лимит одного запроса — 500 байт UTF-8. Не отправляй пароли, ключи API и личную информацию.
 
-Then:
+## Основные команды
 
-```bash
-ttranslate -t ru "Hello from Termux"
-```
+| Команда | Назначение |
+|---|---|
+| toolkit menu | Главное меню |
+| toolkit version | Версия Toolkit |
+| toolkit info | Информация об устройстве |
+| toolkit network | Проверка сети |
+| toolkit clean | Проверка размера папки .cache |
+| toolkit clean --apply | Очистка .cache после подтверждения |
+| toolkit packages installed | Установленные пакеты |
+| toolkit packages upgradable | Пакеты, доступные для обновления |
+| toolkit processes | Список процессов |
+| toolkit report | Сохранить системный отчёт |
+| toolkit backup ПАПКА -o ПАПКА_КОПИЙ | Создать ZIP-копию |
+| toolkit trans | Открыть переводчик |
 
-## Existing toolkit commands
+## Безопасность
 
-```bash
-python3 termux_toolkit.py info
-python3 termux_toolkit.py network
-python3 termux_toolkit.py clean
-python3 termux_toolkit.py packages upgradable
-python3 termux_toolkit.py processes
-python3 termux_toolkit.py report
-python3 termux_toolkit.py backup ~/storage/shared/Documents -o ~/backups
-python3 termux_toolkit.py menu
-```
+- Очистка по умолчанию работает в режиме проверки и ничего не удаляет.
+- Нельзя очистить домашнюю папку целиком или указать путь за её пределами.
+- Просмотр пакетов и процессов не меняет состояние системы.
+- ZIP-архив не зашифрован.
+- При переводе текст отправляется стороннему сервису.
 
-## Safety
+## Лицензия
 
-- Translation sends the text you provide to the configured remote translation service.
-- The translator does not require root and does not modify system files.
-- Clipboard operations require Termux:API.
-- Existing toolkit cleanup and backup safety rules remain unchanged.
-
-## Compatibility
-
-Designed for Termux on Android and Linux with Python 3.9+. No root access is required.
-
-## License
-
-MIT. See LICENSE.
+MIT. См. LICENSE.
