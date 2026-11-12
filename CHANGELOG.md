@@ -1,12 +1,21 @@
-# Changelog
+# История изменений
 
-## 1.2.28 — 2026-11-12
+## 1.2.30 — 2026-11-12
 
-- Added an interactive terminal menu.
-- Added read-only process listing.
-- Added JSON system-report export.
-- Added global \`toolkit\` command installation and safe uninstallation.
-- Added version command and clearer CLI help.
-- Improved terminal color handling and error messages.
-- Kept storage cleanup in dry-run mode by default and retained path safety checks.
-- Improved backup handling and documented privacy considerations.
+- Переведены меню, справка и основные сообщения Toolkit на русский язык.
+- Упрощён запуск переводчика из главного меню.
+- Для переводчика установлен русский язык результата по умолчанию.
+- Добавлен ввод текста прямо в интерактивном режиме.
+- Добавлены русские названия языков и простое локальное определение исходного языка.
+- Добавлены понятные сообщения об ошибках и предупреждение о лимите сервиса перевода.
+- README переписан на русском языке и приведён в соответствие с командами проекта.
+
+## 1.2.28
+
+- Добавлено интерактивное меню.
+- Добавлен просмотр процессов только для чтения.
+- Добавлен экспорт системного отчёта в JSON.
+- Добавлена установка и безопасное удаление команды toolkit.
+- Добавлена команда версии и улучшена справка CLI.
+- Очистка хранилища по умолчанию оставлена в режиме проверки.
+- Улучшена обработка резервных копий.
