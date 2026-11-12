@@ -19,7 +19,7 @@ import zipfile
 from pathlib import Path
 
 APP_NAME = "Suyziss Termux Toolkit"
-APP_VERSION = "1.2.28"
+APP_VERSION = "1.2.29"
 HOME = Path.home().resolve()
 IS_TERMUX = "com.termux" in os.environ.get("PREFIX", "") or shutil.which("pkg") is not None
 NO_COLOR = not sys.stdout.isatty() or "NO_COLOR" in os.environ
@@ -316,6 +316,31 @@ def export_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def translate_command(args: argparse.Namespace) -> int:
+    translator = Path(__file__).resolve().with_name("translate.py")
+    if not translator.is_file():
+        print(f"Translator not found: {translator}", file=sys.stderr)
+        return 1
+    command = [sys.executable, str(translator)]
+    if args.source:
+        command.extend(["--source", args.source])
+    command.extend(["--target", args.target])
+    if args.copy:
+        command.append("--copy")
+    if args.clipboard:
+        command.append("--clipboard")
+    if args.timeout:
+        command.extend(["--timeout", str(args.timeout)])
+    if args.text:
+        command.extend(args.text)
+    try:
+        result = subprocess.run(command, text=True, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f"Translation failed to start: {exc}", file=sys.stderr)
+        return 1
+    return result.returncode
+
+
 def install_command(_: argparse.Namespace) -> int:
     prefix = Path(os.environ.get("PREFIX", str(HOME / ".local")))
     bindir = prefix / "bin"
@@ -360,7 +385,7 @@ def uninstall_command(args: argparse.Namespace) -> int:
             return 0
         launcher.unlink()
     except OSError as exc:
-        print(f"Could not uninstall command: {exc}", file=sys.stderr)
+        print(f"Could not uninstall toolkit command: {exc}", file=sys.stderr)
         return 1
     print("The toolkit launcher was removed. Project files were not changed.")
     return 0
@@ -376,6 +401,7 @@ def interactive_menu(_: argparse.Namespace) -> int:
         "6": ("Export system report", ["report"]),
         "7": ("Install toolkit command", ["install-command"]),
         "8": ("Folder backup", None),
+        "9": ("Translate text", None),
     }
     while True:
         heading(f"{APP_NAME} v{APP_VERSION}")
@@ -389,12 +415,19 @@ def interactive_menu(_: argparse.Namespace) -> int:
             print("Invalid selection.")
             continue
         label, command = actions[choice]
-        if command is None:
+        if command is None and label == "Folder backup":
             source = input("Folder to back up: ").strip()
             if not source:
                 continue
             output = input("Output directory [current]: ").strip() or "."
             command = ["backup", source, "-o", output]
+        elif command is None and label == "Translate text":
+            target = input("Target language [ru]: ").strip() or "ru"
+            source = input("Source language [auto]: ").strip() or "auto"
+            text = input("Text: ").strip()
+            if not text:
+                continue
+            command = ["trans", "-s", source, "-t", target, text]
         try:
             parsed = build_parser().parse_args(command)
             code = int(parsed.func(parsed))
@@ -445,6 +478,15 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("report", help="Export a JSON system report")
     p.add_argument("-o", "--output", default=f"termux-toolkit-report-{dt.datetime.now():%Y%m%d-%H%M%S}.json")
     p.set_defaults(func=export_report)
+
+    p = sub.add_parser("trans", aliases=["translate"], help="Translate text through the Termux Translate tool")
+    p.add_argument("text", nargs="*", help="Text to translate")
+    p.add_argument("-s", "--source", default="auto", help="Source language code")
+    p.add_argument("-t", "--target", required=True, help="Target language code")
+    p.add_argument("-c", "--copy", action="store_true", help="Copy the result to the Termux clipboard")
+    p.add_argument("--clipboard", action="store_true", help="Translate the Termux clipboard")
+    p.add_argument("--timeout", type=int, default=20, help="HTTP timeout in seconds")
+    p.set_defaults(func=translate_command)
 
     p = sub.add_parser("install-command", help="Install the global 'toolkit' shell command")
     p.set_defaults(func=install_command)
