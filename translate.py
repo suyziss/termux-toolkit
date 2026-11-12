@@ -1,118 +1,146 @@
 #!/usr/bin/env python3
-"""Suyziss Termux Translate: dependency-free terminal translator."""
+"""Suyziss Termux Translate: simple Russian-first terminal translator."""
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 
 API_URL = "https://api.mymemory.translated.net/get"
-USER_AGENT = "Suyziss-Termux-Translate/1.0"
+USER_AGENT = "Suyziss-Termux-Translate/1.1"
+
+LANGUAGES = {
+    "русский": "ru", "рус": "ru", "английский": "en", "англ": "en",
+    "кыргызский": "ky", "кыргызча": "ky", "кыргыз": "ky",
+    "казахский": "kk", "украинский": "uk", "немецкий": "de",
+    "французский": "fr", "испанский": "es", "турецкий": "tr",
+    "китайский": "zh-CN", "японский": "ja", "корейский": "ko",
+    "итальянский": "it", "польский": "pl", "португальский": "pt",
+}
 
 
-def translate_text(text: str, source: str, target: str, timeout: int) -> tuple[str, str | None]:
+def normalize_language(value: str) -> str:
+    value = value.strip().lower()
+    return LANGUAGES.get(value, value)
+
+
+def detect_source(text: str) -> str:
+    """Small offline heuristic; user can always override with --source."""
+    letters = [char.lower() for char in text if char.isalpha()]
+    if not letters:
+        return "en"
+    cyrillic = sum("а" <= char <= "я" or char in "ёөүңієїґ" for char in letters)
+    if cyrillic / len(letters) < 0.25:
+        return "en"
+    if any(char in text.lower() for char in "өүң"):
+        return "ky"
+    if any(char in text.lower() for char in "іїєґ"):
+        return "uk"
+    return "ru"
+
+
+def translate_text(text: str, source: str, target: str, timeout: int) -> str:
     if not text.strip():
-        raise ValueError("Text is empty.")
-
-    params = {
-        "q": text,
-        "langpair": f"{source}|{target}",
-    }
+        raise ValueError("Введите текст для перевода.")
+    if len(text.encode("utf-8")) > 500:
+        raise ValueError("Слишком длинный текст для одного запроса (лимит сервиса — 500 байт). Разделите его на несколько частей.")
+    params = {"q": text, "langpair": f"{source}|{target}"}
     url = f"{API_URL}?{urllib.parse.urlencode(params)}"
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             data = json.loads(response.read().decode("utf-8"))
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"Translation request failed: {exc}") from exc
-
+        raise RuntimeError(f"Не удалось связаться с сервисом перевода: {exc}") from exc
     if data.get("responseStatus") not in (200, "200"):
-        message = data.get("responseDetails") or "Unknown API error"
-        raise RuntimeError(f"Translation failed: {message}")
-
+        message = data.get("responseDetails") or "неизвестная ошибка API"
+        raise RuntimeError(f"Сервис перевода вернул ошибку: {message}")
     result = data.get("responseData", {}).get("translatedText", "").strip()
     if not result:
-        raise RuntimeError("Translator returned an empty result.")
-
-    detected = None
-    matches = data.get("matches") or []
-    if matches:
-        detected = matches[0].get("source")
-    return result, detected
+        raise RuntimeError("Сервис вернул пустой перевод.")
+    return result
 
 
 def get_clipboard() -> str:
-    command = "termux-clipboard-get"
-    if not shutil_which(command):
-        raise RuntimeError("termux-clipboard-get is not installed. Install termux-api or pass text directly.")
+    import shutil
     import subprocess
-    result = subprocess.run([command], text=True, capture_output=True, check=False)
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or "Could not read the Termux clipboard.")
+    if not shutil.which("termux-clipboard-get"):
+        raise RuntimeError("Не найдена команда termux-clipboard-get. Установите Termux:API и пакет termux-api.")
+    result = subprocess.run(["termux-clipboard-get"], text=True, capture_output=True, check=False)
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip() or "Не удалось прочитать буфер обмена.")
     return result.stdout
 
 
 def set_clipboard(text: str) -> None:
-    command = "termux-clipboard-set"
-    if not shutil_which(command):
-        raise RuntimeError("termux-clipboard-set is not installed. Install termux-api or omit --copy.")
-    import subprocess
-    result = subprocess.run([command], input=text, text=True, capture_output=True, check=False)
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or "Could not write the Termux clipboard.")
-
-
-def shutil_which(command: str) -> str | None:
     import shutil
-    return shutil.which(command)
+    import subprocess
+    if not shutil.which("termux-clipboard-set"):
+        raise RuntimeError("Не найдена команда termux-clipboard-set. Установите Termux:API и пакет termux-api.")
+    result = subprocess.run(["termux-clipboard-set"], input=text, text=True, capture_output=True, check=False)
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip() or "Не удалось записать перевод в буфер обмена.")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="ttranslate",
-        description="Translate text from Termux without third-party Python packages.",
+        description="Простой переводчик для Termux. По умолчанию переводит на русский.",
+        epilog="Пример: toolkit trans -t en Привет. Названия языков тоже принимаются: -t английский",
     )
-    parser.add_argument("text", nargs="*", help="Text to translate. If omitted, read stdin.")
-    parser.add_argument("-s", "--source", default="auto", help="Source language code, e.g. en, ru, ky, de. Default: auto")
-    parser.add_argument("-t", "--target", required=True, help="Target language code, e.g. en, ru, ky, de")
-    parser.add_argument("-c", "--copy", action="store_true", help="Copy the result using termux-clipboard-set")
-    parser.add_argument("--clipboard", action="store_true", help="Translate text from the Termux clipboard")
-    parser.add_argument("--timeout", type=int, default=20, help="HTTP timeout in seconds")
+    parser.add_argument("text", nargs="*", help="Текст для перевода; если не указан, будет запрос ввода")
+    parser.add_argument("-s", "--source", default="auto", help="Исходный язык: auto, ru, en, ky и т. д.")
+    parser.add_argument("-t", "--target", default="ru", help="Язык результата; по умолчанию ru")
+    parser.add_argument("-c", "--copy", action="store_true", help="Скопировать перевод в буфер обмена")
+    parser.add_argument("--clipboard", action="store_true", help="Взять исходный текст из буфера обмена")
+    parser.add_argument("--timeout", type=int, default=20, help="Тайм-аут запроса в секундах")
     args = parser.parse_args()
 
     if args.clipboard and args.text:
-        parser.error("Use either text arguments or --clipboard, not both.")
+        parser.error("Укажите текст или --clipboard, но не оба варианта сразу.")
 
     if args.clipboard:
-        text = get_clipboard()
+        try:
+            text = get_clipboard()
+        except RuntimeError as exc:
+            print(f"Ошибка: {exc}", file=sys.stderr)
+            return 1
     elif args.text:
         text = " ".join(args.text)
+    elif sys.stdin.isatty():
+        print("Введите текст для перевода (одна строка).")
+        try:
+            text = input("Текст: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\\nОтменено.")
+            return 130
+        if not text:
+            print("Текст не введён.")
+            return 1
+        target = input(f"На какой язык? [{args.target}]: ").strip()
+        if target:
+            args.target = target
     else:
         text = sys.stdin.read()
 
-    source = args.source
-    # MyMemory uses an explicit source language in langpair. "auto" is handled
-    # with its automatic matching behavior by using the same API with "en" fallback.
+    source = normalize_language(args.source)
+    target = normalize_language(args.target)
     if source == "auto":
-        source = "en"
+        source = detect_source(text)
+        print(f"Определён исходный язык: {source}", file=sys.stderr)
 
     try:
-        result, detected = translate_text(text, source, args.target, args.timeout)
+        result = translate_text(text, source, target, args.timeout)
         print(result)
         if args.copy:
             set_clipboard(result)
-            print("Copied to clipboard.", file=sys.stderr)
-        if detected and args.source == "auto" and detected != "en":
-            print(f"Detected source: {detected}", file=sys.stderr)
+            print("Перевод скопирован в буфер обмена.", file=sys.stderr)
     except (RuntimeError, ValueError) as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        print(f"Ошибка: {exc}", file=sys.stderr)
         return 1
-
     return 0
 
 
